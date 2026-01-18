@@ -127,8 +127,18 @@
                                                placeholder="{{ __('luna.buy_email_tips') }}">
                                     </label>
                                 </div>
+                                {{-- 推广码折扣显示区域 --}}
+                                <div class="entry" id="aff_discount_area" style="display: none;">
+                                    <span class="l-msg">折扣优惠：</span>
+                                    <label class="input" style="background: #e8f5e9; border-color: #28a745;">
+                                        <span id="aff_discount_text" style="color: #28a745; font-weight: bold; line-height: 37px; padding: 0 10px;"></span>
+                                    </label>
+                                </div>
+                                {{-- 隐藏字段：记录推广码用于订单提交 --}}
+                                <input type="hidden" name="affiliate_code" id="affiliate_code_hidden" value="">
+
                                 @if(isset($open_coupon))
-                                    <div class="entry">
+                                    <div class="entry" id="coupon_area">
                                         <span class="l-msg">{{ __('luna.buy_disc') }}：</span>
                                         <label class="input">
                                             <input type="text" name="coupon_code"
@@ -405,6 +415,93 @@
                 navbar : false,
                 title  : false,
             });
+        });
+
+        /**
+         * 推广码折扣功能（直接折扣模式）
+         *
+         * 流程：
+         * 1. 优先从 URL 参数读取推广码，否则从 localStorage 读取
+         * 2. 通过 AJAX 请求后端 API 获取折扣信息
+         * 3. 显示折扣信息，禁用优惠码输入框（互斥）
+         * 4. 记录推广码到隐藏字段用于订单提交
+         */
+        $(document).ready(function() {
+            // 1. 获取 affCode：URL 参数优先
+            var urlParams = new URLSearchParams(window.location.search);
+            var affCode = urlParams.get('aff');
+
+            // 2. 如果 URL 没有，则从 localStorage 获取
+            if (!affCode) {
+                try {
+                    affCode = localStorage.getItem('affCode');
+                } catch (e) {
+                    console.warn('[Affiliate] 无法读取 localStorage:', e);
+                }
+            }
+
+            // 3. 如果 URL 有推广码，保存到 localStorage
+            if (urlParams.get('aff')) {
+                try {
+                    localStorage.setItem('affCode', affCode);
+                } catch (e) {
+                    console.warn('[Affiliate] 无法写入 localStorage:', e);
+                }
+            }
+
+            // 如果存在推广码
+            if (affCode && affCode.trim() !== '') {
+                console.log('[Affiliate] 检测到推广码:', affCode);
+
+                // 通过 AJAX 获取折扣信息
+                $.ajax({
+                    url: '/api/affiliate/discount',
+                    type: 'GET',
+                    data: {
+                        aff: affCode
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // 成功获取折扣信息
+                            var $affDiscountArea = $('#aff_discount_area');
+                            var $affDiscountText = $('#aff_discount_text');
+                            var $affHidden = $('#affiliate_code_hidden');
+
+                            // 构建折扣显示文本
+                            var discountText = '';
+                            if (response.discount_type === 1) {
+                                // 固定金额减免
+                                discountText = '减 ' + response.discount_value + ' 元';
+                            } else {
+                                // 百分比折扣
+                                discountText = response.discount_value + '% 折扣';
+                            }
+
+                            // 显示折扣信息
+                            $affDiscountText.text(discountText);
+                            $affDiscountArea.show();
+
+                            // 记录推广码到隐藏字段（用于订单提交）
+                            $affHidden.val(affCode);
+
+                            // 隐藏优惠码区域（推广码与优惠码互斥）
+                            var $couponArea = $('#coupon_area');
+                            if ($couponArea.length) {
+                                $couponArea.hide();
+                            }
+
+                            console.log('[Affiliate] 折扣信息:', response.discount_type_text, response.discount_value);
+                        } else {
+                            // 推广码无效或已禁用
+                            console.log('[Affiliate] ' + (response.message || '推广码无效或已禁用'));
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // API 请求失败（不影响用户正常购买）
+                        console.error('[Affiliate] 获取折扣信息失败:', error);
+                    }
+                });
+            }
         });
 
     </script>

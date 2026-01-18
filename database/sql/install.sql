@@ -45,6 +45,7 @@ INSERT INTO `admin_menu` VALUES (22, 0, 8, 'Order_Manage', 'fa-table', NULL, '',
 INSERT INTO `admin_menu` VALUES (23, 22, 20, 'Order', 'fa-heart', '/order', '', 1, '2021-05-23 20:46:13', '2021-05-23 20:47:16');
 INSERT INTO `admin_menu` VALUES (24, 19, 21, 'System_Setting', 'fa-cogs', '/system-setting', '', 1, '2021-05-26 10:26:34', '2021-05-26 10:26:34');
 INSERT INTO `admin_menu` VALUES (25, 19, 22, 'Email_Test', 'fa-envelope', '/email-test', '', 1, '2022-07-26 12:09:34', '2022-07-26 12:17:21');
+INSERT INTO `admin_menu` VALUES (26, 18, 17, 'Affiliate_Code', 'fa-share-alt', '/affiliate-code', '', 1, '2026-01-11 12:00:00', '2026-01-11 12:00:00');
 
 COMMIT;
 
@@ -408,11 +409,13 @@ CREATE TABLE `orders` (
   `order_sn` varchar(150) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL COMMENT '订单号',
   `goods_id` int NOT NULL COMMENT '关联商品id',
   `coupon_id` int DEFAULT '0' COMMENT '关联优惠码id',
+  `affiliate_code_id` int DEFAULT NULL COMMENT '关联推广码id',
   `title` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '订单名称',
   `type` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1自动发货 2人工处理',
   `goods_price` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '商品单价',
   `buy_amount` int NOT NULL DEFAULT '1' COMMENT '购买数量',
   `coupon_discount_price` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '优惠码优惠价格',
+  `affiliate_discount_price` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '推广码优惠价格',
   `wholesale_discount_price` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '批发价优惠',
   `total_price` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '订单总价',
   `actual_price` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '实际支付价格',

@@ -68,12 +68,20 @@
                                                         <input type="number" class="form-control form-control-sm"
                                                                id="shop-number" name="by_amount" placeholder="" min="1" value="1">
                                                     </div>
+                                                    {{-- 推广码折扣显示区域 --}}
+                                                    <div class="col-xs-12 col-md-6" id="aff_discount_area" style="display: none;">
+                                                        <label class="col-form-label">折扣优惠:</label>
+                                                        <div class="alert alert-success py-1 mb-0" id="aff_discount_text"></div>
+                                                    </div>
+                                                    {{-- 隐藏字段：记录推广码用于订单提交 --}}
+                                                    <input type="hidden" name="affiliate_code" id="affiliate_code_hidden" value="">
+
                                                     @if(isset($open_coupon))
-                                                        <div class="col-xs-12 col-md-6">
+                                                        <div class="col-xs-12 col-md-6" id="coupon_area">
                                                             <label for="coupon" class="col-form-label">{{ __('dujiaoka.coupon_code') }}:</label>
                                                             <input type="text"
                                                                    class=" control form-control form-control-sm"
-                                                                   id="coupon" name="coupon_code"   placeholder="" value="" >
+                                                                   name="coupon_code" placeholder="" value="" >
                                                         </div>
                                                     @endif
                                                     @if(dujiaoka_config_get('is_open_search_pwd') == \App\Models\Goods::STATUS_OPEN)
@@ -185,6 +193,78 @@
 @section('js')
 <script src="/assets/unicorn/js/bootstrap-input-spinner.js"></script>
 <script>
+    /**
+     * 推广码折扣功能（直接折扣模式）
+     * 优先级：URL 参数 > localStorage
+     */
+    (function() {
+        // 1. 获取 affCode：URL 参数优先
+        var urlParams = new URLSearchParams(window.location.search);
+        var affCode = urlParams.get('aff');
+
+        // 2. 如果 URL 没有，则从 localStorage 获取
+        if (!affCode) {
+            try {
+                affCode = localStorage.getItem('affCode');
+            } catch (e) {
+                console.warn('[Affiliate] 无法读取 localStorage:', e);
+            }
+        }
+
+        // 3. 如果 URL 有推广码，保存到 localStorage
+        if (urlParams.get('aff')) {
+            try {
+                localStorage.setItem('affCode', affCode);
+            } catch (e) {
+                console.warn('[Affiliate] 无法写入 localStorage:', e);
+            }
+        }
+
+        // 4. 如果有 affCode，调用 API 获取折扣信息
+        if (affCode) {
+            $.ajax({
+                url: '/api/affiliate/discount',
+                type: 'GET',
+                data: { aff: affCode },
+                success: function(res) {
+                    if (res.success) {
+                        var $affDiscountArea = $('#aff_discount_area');
+                        var $affDiscountText = $('#aff_discount_text');
+                        var $affHidden = $('#affiliate_code_hidden');
+
+                        // 构建折扣显示文本
+                        var discountText = '';
+                        if (res.discount_type === 1) {
+                            discountText = '减 ' + res.discount_value + ' 元';
+                        } else {
+                            discountText = res.discount_value + '% 折扣';
+                        }
+
+                        // 显示折扣信息
+                        $affDiscountText.text(discountText);
+                        $affDiscountArea.show();
+
+                        // 记录推广码到隐藏字段
+                        $affHidden.val(affCode);
+
+                        // 隐藏优惠码区域（推广码与优惠码互斥）
+                        var $couponArea = $('#coupon_area');
+                        if ($couponArea.length) {
+                            $couponArea.hide();
+                        }
+
+                        console.log('[Affiliate] 折扣信息:', res.discount_type_text, res.discount_value);
+                    } else {
+                        console.log('[Affiliate] ' + (res.message || '推广码无效或已禁用'));
+                    }
+                },
+                error: function(err) {
+                    console.error('[Affiliate] 获取折扣信息失败:', err);
+                }
+            });
+        }
+    })();
+
             @if(!empty($buy_prompt))
             var myModal = new bootstrap.Modal(document.getElementById('staticBackdrop'))
             $(function(){

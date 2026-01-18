@@ -77,8 +77,16 @@
                     <input type="text" name="search_pwd" value="" class="form-control" placeholder="{{ __('hyper.buy_input_search_password') }}">
                 </div>
                 @endif
+                {{-- 推广码折扣显示区域 --}}
+                <div class="form-group" id="aff_discount_area" style="display: none;">
+                    <div class="buy-title">折扣优惠</div>
+                    <div class="alert alert-success mb-0" id="aff_discount_text" style="padding: 8px 12px;"></div>
+                </div>
+                {{-- 隐藏字段：记录推广码用于订单提交 --}}
+                <input type="hidden" name="affiliate_code" id="affiliate_code_hidden" value="">
+
                 @if(isset($open_coupon))
-                    <div class="form-group">
+                    <div class="form-group" id="coupon_area">
                         {{-- 优惠码 --}}
                         <div class="buy-title">{{ __('hyper.buy_promo_code') }}</div>
                         {{-- 您有优惠码吗？ --}}
@@ -172,6 +180,78 @@
 @stop
 @section('js')
 <script>
+    /**
+     * 推广码折扣功能（直接折扣模式）
+     * 优先级：URL 参数 > localStorage
+     */
+    (function() {
+        // 1. 获取 affCode：URL 参数优先
+        var urlParams = new URLSearchParams(window.location.search);
+        var affCode = urlParams.get('aff');
+
+        // 2. 如果 URL 没有，则从 localStorage 获取
+        if (!affCode) {
+            try {
+                affCode = localStorage.getItem('affCode');
+            } catch (e) {
+                console.warn('[Affiliate] 无法读取 localStorage:', e);
+            }
+        }
+
+        // 3. 如果 URL 有推广码，保存到 localStorage
+        if (urlParams.get('aff')) {
+            try {
+                localStorage.setItem('affCode', affCode);
+            } catch (e) {
+                console.warn('[Affiliate] 无法写入 localStorage:', e);
+            }
+        }
+
+        // 4. 如果有 affCode，调用 API 获取折扣信息
+        if (affCode) {
+            $.ajax({
+                url: '/api/affiliate/discount',
+                type: 'GET',
+                data: { aff: affCode },
+                success: function(res) {
+                    if (res.success) {
+                        var $affDiscountArea = $('#aff_discount_area');
+                        var $affDiscountText = $('#aff_discount_text');
+                        var $affHidden = $('#affiliate_code_hidden');
+
+                        // 构建折扣显示文本
+                        var discountText = '';
+                        if (res.discount_type === 1) {
+                            discountText = '减 ' + res.discount_value + ' 元';
+                        } else {
+                            discountText = res.discount_value + '% 折扣';
+                        }
+
+                        // 显示折扣信息
+                        $affDiscountText.text(discountText);
+                        $affDiscountArea.show();
+
+                        // 记录推广码到隐藏字段
+                        $affHidden.val(affCode);
+
+                        // 隐藏优惠码区域（推广码与优惠码互斥）
+                        var $couponArea = $('#coupon_area');
+                        if ($couponArea.length) {
+                            $couponArea.hide();
+                        }
+
+                        console.log('[Affiliate] 折扣信息:', res.discount_type_text, res.discount_value);
+                    } else {
+                        console.log('[Affiliate] ' + (res.message || '推广码无效或已禁用'));
+                    }
+                },
+                error: function(err) {
+                    console.error('[Affiliate] 获取折扣信息失败:', err);
+                }
+            });
+        }
+    })();
+
     $('#submit').click(function(){
         if($("input[name='email']").val() == ''){
             {{-- 邮箱不能为空 --}}
