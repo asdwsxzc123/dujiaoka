@@ -7,7 +7,23 @@
 ```bash
 cd /root/dujiaoka
 ./deploy.sh
+
 ```
+
+## 升级脚本清除容器缓存
+```
+# 重新构建镜像并启动（关键！） 需要重构，直接发镜像，流程太复杂了，还需要 删除容器
+docker-compose --env-file .env.docker up -d --build
+
+# 清除缓存
+docker exec -it dujiaoka php artisan optimize:clear
+
+# 停止并删除旧容器
+docker-compose --env-file .env.docker down
+
+# 重新启动
+docker-compose --env-file .env.docker up -d
+ ```
 
 按照提示输入配置信息即可完成部署。
 
