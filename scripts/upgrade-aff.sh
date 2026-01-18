@@ -119,7 +119,7 @@ MENU_EXISTS=$(echo "SELECT COUNT(*) FROM admin_menu WHERE uri='/affiliate-code';
 
 if [ "$MENU_EXISTS" = "0" ]; then
     cat <<'SQL' | $MYSQL_CMD
-INSERT INTO `admin_menu` (`parent_id`, `order`, `title`, `icon`, `uri`, `permission`, `show`, `created_at`, `updated_at`)
+INSERT INTO `admin_menu` (`parent_id`, `order`, `title`, `icon`, `uri`, `extension`, `show`, `created_at`, `updated_at`)
 SELECT 18, COALESCE(MAX(`order`), 0) + 1, 'Affiliate_Code', 'fa-share-alt', '/affiliate-code', '', 1, NOW(), NOW()
 FROM `admin_menu` WHERE `parent_id` = 18;
 SQL
