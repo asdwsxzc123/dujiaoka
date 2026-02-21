@@ -2,6 +2,20 @@
     // 检查是否有筛选条件
     $hasFilters = !empty($filters['start_date']) || !empty($filters['end_date']) || !empty($filters['order_sn']) || !empty($filters['goods_id']);
     $filterLabel = $hasFilters ? ' (筛选结果)' : '';
+
+    // 佣金计算
+    $commissionRate = $affiliateCode->commission_rate ?? 0;
+    $commissionAmount = $commissionRate > 0 ? round($stats['total_amount'] * $commissionRate / 100, 2) : 0;
+
+    // 时段显示
+    $periodText = '全部时段';
+    if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+        $periodText = $filters['start_date'] . ' ~ ' . $filters['end_date'];
+    } elseif (!empty($filters['start_date'])) {
+        $periodText = $filters['start_date'] . ' 起';
+    } elseif (!empty($filters['end_date'])) {
+        $periodText = '至 ' . $filters['end_date'];
+    }
 @endphp
 
 <div class="row">
@@ -52,6 +66,53 @@
     </div>
 </div>
 
+<!-- 佣金计算卡片 -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title"><i class="feather icon-percent"></i> 佣金结算</h3>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="commission-item">
+                    <span class="commission-label">统计时段</span>
+                    <span class="commission-value">{{ $periodText }}</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="commission-item">
+                    <span class="commission-label">订单实付总额</span>
+                    <span class="commission-value">¥{{ number_format($stats['total_amount'], 2) }}</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="commission-item">
+                    <span class="commission-label">佣金比例</span>
+                    <span class="commission-value">
+                        @if($commissionRate > 0)
+                            {{ $commissionRate }}%
+                        @else
+                            <span class="text-muted">未设置</span>
+                        @endif
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="commission-item">
+                    <span class="commission-label">应返佣金</span>
+                    <span class="commission-value commission-highlight">
+                        @if($commissionRate > 0)
+                            ¥{{ number_format($commissionAmount, 2) }}
+                        @else
+                            <span class="text-muted">-</span>
+                        @endif
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 推广码信息 -->
 <div class="card">
     <div class="card-header">
@@ -84,6 +145,16 @@
                 </td>
             </tr>
             <tr>
+                <th>佣金比例</th>
+                <td>
+                    @if($commissionRate > 0)
+                        {{ $commissionRate }}%
+                    @else
+                        <span class="text-muted">未设置</span>
+                    @endif
+                </td>
+            </tr>
+            <tr>
                 <th>使用次数</th>
                 <td>{{ $affiliateCode->use_count }}</td>
             </tr>
@@ -111,15 +182,25 @@
         <h3 class="card-title">筛选查询</h3>
     </div>
     <div class="card-body">
-        <form method="GET" action="" class="form-inline">
+        <!-- 快捷时间按钮 -->
+        <div class="mb-3">
+            <label class="mr-2">快捷选择：</label>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-primary quick-date-btn" data-range="this_week">本周</button>
+                <button type="button" class="btn btn-sm btn-outline-primary quick-date-btn" data-range="last_week">上周</button>
+                <button type="button" class="btn btn-sm btn-outline-primary quick-date-btn" data-range="last_month">上月</button>
+            </div>
+        </div>
+
+        <form id="filterForm" method="GET" action="" class="form-inline">
             <div class="form-group mr-3 mb-2">
                 <label class="mr-2">开始日期</label>
-                <input type="date" name="start_date" class="form-control form-control-sm"
+                <input type="date" name="start_date" id="startDate" class="form-control form-control-sm"
                        value="{{ $filters['start_date'] ?? '' }}">
             </div>
             <div class="form-group mr-3 mb-2">
                 <label class="mr-2">结束日期</label>
-                <input type="date" name="end_date" class="form-control form-control-sm"
+                <input type="date" name="end_date" id="endDate" class="form-control form-control-sm"
                        value="{{ $filters['end_date'] ?? '' }}">
             </div>
             <div class="form-group mr-3 mb-2">
@@ -253,4 +334,110 @@
     background-color: #6c757d !important;
     color: #fff;
 }
+/* 佣金结算卡片样式 */
+.commission-item {
+    text-align: center;
+    padding: 10px 0;
+}
+.commission-label {
+    display: block;
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 6px;
+}
+.commission-value {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+}
+.commission-highlight {
+    color: #dc3545;
+    font-size: 1.5rem;
+}
+/* 快捷按钮选中态 */
+.quick-date-btn.active {
+    background-color: #007bff;
+    color: #fff;
+    border-color: #007bff;
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var startInput = document.getElementById('startDate');
+    var endInput = document.getElementById('endDate');
+    var form = document.getElementById('filterForm');
+    var buttons = document.querySelectorAll('.quick-date-btn');
+
+    /**
+     * 格式化日期为 YYYY-MM-DD
+     */
+    function formatDate(date) {
+        var y = date.getFullYear();
+        var m = String(date.getMonth() + 1).padStart(2, '0');
+        var d = String(date.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+    }
+
+    /**
+     * 根据快捷类型计算日期范围
+     * this_week: 本周一 ~ 本周日
+     * last_week: 上周一 ~ 上周日
+     * last_month: 上月1号 ~ 上月最后一天
+     */
+    function getDateRange(range) {
+        var now = new Date();
+        var day = now.getDay() || 7; // 周日为7
+        var start, end;
+
+        if (range === 'this_week') {
+            start = new Date(now);
+            start.setDate(now.getDate() - day + 1); // 本周一
+            end = new Date(start);
+            end.setDate(start.getDate() + 6); // 本周日
+        } else if (range === 'last_week') {
+            start = new Date(now);
+            start.setDate(now.getDate() - day - 6); // 上周一
+            end = new Date(start);
+            end.setDate(start.getDate() + 6); // 上周日
+        } else if (range === 'last_month') {
+            start = new Date(now.getFullYear(), now.getMonth() - 1, 1); // 上月1号
+            end = new Date(now.getFullYear(), now.getMonth(), 0); // 上月最后一天
+        }
+
+        return { start: formatDate(start), end: formatDate(end) };
+    }
+
+    // 绑定快捷按钮点击事件
+    buttons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var range = this.getAttribute('data-range');
+            var dates = getDateRange(range);
+
+            // 填入日期
+            startInput.value = dates.start;
+            endInput.value = dates.end;
+
+            // 高亮当前按钮
+            buttons.forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+
+            // 自动提交
+            form.submit();
+        });
+    });
+
+    // 页面加载时，根据当前日期回显按钮高亮
+    var currentStart = startInput.value;
+    var currentEnd = endInput.value;
+    if (currentStart && currentEnd) {
+        ['this_week', 'last_week', 'last_month'].forEach(function(range) {
+            var dates = getDateRange(range);
+            if (dates.start === currentStart && dates.end === currentEnd) {
+                document.querySelector('.quick-date-btn[data-range="' + range + '"]').classList.add('active');
+            }
+        });
+    }
+});
+</script>

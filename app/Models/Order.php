@@ -126,7 +126,8 @@ class Order extends BaseModel
      */
     public function coupon()
     {
-        return $this->belongsTo(Coupon::class, 'coupon_id');
+        // 包含已软删除的优惠码，确保订单列表仍能显示历史优惠码
+        return $this->belongsTo(Coupon::class, 'coupon_id')->withTrashed();
     }
 
     /**
@@ -136,7 +137,8 @@ class Order extends BaseModel
      */
     public function affiliateCode()
     {
-        return $this->belongsTo(AffiliateCode::class, 'affiliate_code_id');
+        // 包含已软删除的推广码，确保订单列表仍能显示历史推广码
+        return $this->belongsTo(AffiliateCode::class, 'affiliate_code_id')->withTrashed();
     }
 
     /**

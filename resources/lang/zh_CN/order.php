@@ -24,6 +24,7 @@ return [
         'total_price' => '订单总价',
         'trade_no' => '第三方支付订单号',
         'type' => '订单类型',
+        'affiliate_code_id' => '推广码',
         'wholesale_discount_price' => '批发价优惠',
         'status_wait_pay' => '待支付',
         'status_pending' => '待处理',

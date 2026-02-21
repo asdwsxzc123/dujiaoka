@@ -23,6 +23,7 @@ return [
         'total_price' => '訂單總價',
         'trade_no' => '第三方支付訂單號',
         'type' => '訂單類型',
+        'affiliate_code_id' => '推廣碼',
         'wholesale_discount_price' => '批發價折扣',
         'status_wait_pay' => '待支付',
         'status_pending' => '待處理',
