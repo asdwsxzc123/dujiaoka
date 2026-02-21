@@ -7,6 +7,7 @@ use App\Admin\Actions\Post\Restore;
 use App\Admin\Repositories\Order;
 use App\Models\Coupon;
 use App\Models\Goods;
+use App\Models\AffiliateCode;
 use App\Models\Pay;
 use Dcat\Admin\Admin;
 use Dcat\Admin\Form;
@@ -26,7 +27,7 @@ class OrderController extends AdminController
      */
     protected function grid()
     {
-        return Grid::make(new Order(['goods', 'coupon', 'pay']), function (Grid $grid) {
+        return Grid::make(new Order(['goods', 'coupon', 'affiliateCode', 'pay']), function (Grid $grid) {
             $grid->model()->orderBy('id', 'DESC');
             $grid->column('id')->sortable();
             $grid->column('order_sn')->copyable();
@@ -41,8 +42,10 @@ class OrderController extends AdminController
             $grid->column('goods_price');
             $grid->column('buy_amount');
             $grid->column('total_price');
-            $grid->column('coupon.coupon', admin_trans('order.fields.coupon_id'));
+            $grid->column('coupon.coupon', admin_trans('order.fields.coupon_id'))->copyable();
             $grid->column('coupon_discount_price');
+            // 推广码列，可复制便于定位
+            $grid->column('affiliateCode.code', admin_trans('order.fields.affiliate_code_id'))->copyable();
             $grid->column('wholesale_discount_price');
             $grid->column('actual_price');
             $grid->column('pay.pay_name', admin_trans('order.fields.pay_id'));
@@ -63,6 +66,12 @@ class OrderController extends AdminController
                 $filter->equal('type')->select(OrderModel::getTypeMap());
                 $filter->equal('goods_id')->select(Goods::query()->pluck('gd_name', 'id'));
                 $filter->equal('coupon_id')->select(Coupon::query()->pluck('coupon', 'id'));
+                // 推广码筛选：通过关联表的 code 字段进行模糊搜索
+                $filter->where('affiliate_code', function ($query) {
+                    $query->whereHas('affiliateCode', function ($q) {
+                        $q->where('code', 'like', "%{$this->input}%");
+                    });
+                }, admin_trans('order.fields.affiliate_code_id'));
                 $filter->equal('pay_id')->select(Pay::query()->pluck('pay_name', 'id'));
                 $filter->whereBetween('created_at', function ($q) {
                     $start = $this->input['start'] ?? null;
@@ -94,7 +103,7 @@ class OrderController extends AdminController
      */
     protected function detail($id)
     {
-        return Show::make($id, new Order(['goods', 'coupon', 'pay']), function (Show $show) {
+        return Show::make($id, new Order(['goods', 'coupon', 'affiliateCode', 'pay']), function (Show $show) {
             $show->field('id');
             $show->field('order_sn');
             $show->field('title');
@@ -104,6 +113,7 @@ class OrderController extends AdminController
             $show->field('buy_amount');
             $show->field('coupon.coupon', admin_trans('order.fields.coupon_id'));
             $show->field('coupon_discount_price');
+            $show->field('affiliateCode.code', admin_trans('order.fields.affiliate_code_id'));
             $show->field('wholesale_discount_price');
             $show->field('total_price');
             $show->field('actual_price');
@@ -129,7 +139,7 @@ class OrderController extends AdminController
      */
     protected function form()
     {
-        return Form::make(new Order(['goods', 'coupon', 'pay']), function (Form $form) {
+        return Form::make(new Order(['goods', 'coupon', 'affiliateCode', 'pay']), function (Form $form) {
             $form->display('id');
             $form->display('order_sn');
             $form->text('title');
@@ -138,6 +148,7 @@ class OrderController extends AdminController
             $form->display('buy_amount');
             $form->display('coupon.coupon', admin_trans('order.fields.coupon_id'));
             $form->display('coupon_discount_price');
+            $form->display('affiliateCode.code', admin_trans('order.fields.affiliate_code_id'));
             $form->display('wholesale_discount_price');
             $form->display('total_price');
             $form->display('actual_price');

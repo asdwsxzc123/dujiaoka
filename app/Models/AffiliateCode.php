@@ -53,6 +53,7 @@ class AffiliateCode extends BaseModel
         'is_open',
         'discount_type',
         'discount_value',
+        'commission_rate',
         'remark',
         'use_count',
     ];
@@ -66,6 +67,7 @@ class AffiliateCode extends BaseModel
         'is_open' => 'integer',
         'discount_type' => 'integer',
         'discount_value' => 'float',
+        'commission_rate' => 'float',
         'use_count' => 'integer',
     ];
 

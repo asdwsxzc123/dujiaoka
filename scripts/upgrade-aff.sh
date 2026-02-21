@@ -63,9 +63,35 @@ echo -e "${YELLOW}[2/4] 检查升级状态...${NC}"
 TABLE_EXISTS=$(echo "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${MYSQL_DATABASE}' AND table_name='affiliate_codes';" | $MYSQL_CMD -N 2>/dev/null)
 
 if [ "$TABLE_EXISTS" = "1" ]; then
-    echo -e "${GREEN}  ✓ affiliate_codes 表已存在，跳过创建${NC}"
+    echo -e "${GREEN}  ✓ affiliate_codes 表已存在，检查字段完整性${NC}"
 else
     echo -e "${YELLOW}  → 需要创建 affiliate_codes 表${NC}"
+fi
+
+# 如果表已存在，检查是否缺少新增字段
+if [ "$TABLE_EXISTS" = "1" ]; then
+    # 需要检查的字段列表：字段名|类型定义|位置(AFTER哪个字段)|注释
+    COLUMNS_TO_CHECK=(
+        "discount_type|tinyint NOT NULL DEFAULT '1' COMMENT '折扣类型 1固定金额 2百分比'|AFTER is_open"
+        "discount_value|decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '折扣值'|AFTER discount_type"
+        "commission_rate|decimal(5,2) DEFAULT '0.00' COMMENT 'KOL佣金比例(%)'|AFTER discount_value"
+    )
+
+    for COL_DEF in "${COLUMNS_TO_CHECK[@]}"; do
+        COL_NAME=$(echo "$COL_DEF" | cut -d'|' -f1)
+        COL_TYPE=$(echo "$COL_DEF" | cut -d'|' -f2)
+        COL_POS=$(echo "$COL_DEF" | cut -d'|' -f3)
+
+        COL_EXISTS=$(echo "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='${MYSQL_DATABASE}' AND table_name='affiliate_codes' AND column_name='${COL_NAME}';" | $MYSQL_CMD -N 2>/dev/null)
+
+        if [ "$COL_EXISTS" = "0" ]; then
+            echo -e "${YELLOW}  → 补齐缺失字段: ${COL_NAME}${NC}"
+            echo "ALTER TABLE affiliate_codes ADD COLUMN ${COL_NAME} ${COL_TYPE} ${COL_POS};" | $MYSQL_CMD
+            echo -e "${GREEN}  ✓ ${COL_NAME} 字段添加成功${NC}"
+        else
+            echo -e "${GREEN}  ✓ ${COL_NAME} 字段已存在${NC}"
+        fi
+    done
 fi
 
 # 检查订单表字段
@@ -90,6 +116,7 @@ CREATE TABLE IF NOT EXISTS `affiliate_codes` (
   `is_open` tinyint NOT NULL DEFAULT '1' COMMENT '是否启用 1启用 0禁用',
   `discount_type` tinyint NOT NULL DEFAULT '1' COMMENT '折扣类型 1固定金额 2百分比',
   `discount_value` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '折扣值',
+  `commission_rate` decimal(5,2) DEFAULT '0.00' COMMENT 'KOL佣金比例(%)',
   `remark` varchar(255) DEFAULT NULL COMMENT '备注说明',
   `use_count` int NOT NULL DEFAULT '0' COMMENT '使用次数统计',
   `created_at` timestamp NULL DEFAULT NULL,

@@ -64,6 +64,11 @@ class AffiliateCodeController extends AdminController
                 }
             });
 
+            // 佣金比例列
+            $grid->column('commission_rate', '佣金比例')->display(function ($val) {
+                return $val > 0 ? $val . '%' : '-';
+            });
+
             // 使用次数列
             $grid->column('use_count', '使用次数');
 
@@ -179,6 +184,11 @@ class AffiliateCodeController extends AdminController
                  ->default(0)
                  ->required()
                  ->help('固定金额填写元数（如 10 表示减 10 元），百分比填写数值（如 10 表示打 9 折）');
+
+            // 佣金比例
+            $form->decimal('commission_rate', '佣金比例 (%)')
+                 ->default(0)
+                 ->help('KOL 返佣比例，如 10 表示返佣 10%');
 
             // 备注字段
             $form->textarea('remark', '备注')
