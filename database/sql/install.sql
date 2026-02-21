@@ -528,4 +528,17 @@ INSERT INTO `pays` VALUES (34,'USDC-Polygon', 'tokenpay-usdc-polygon', 1, 3, 'EV
 -- ----------------------------
 COMMIT;
 
+-- ----------------------------
+-- Table structure for schema_upgrades
+-- 升级 SQL 执行记录跟踪表，由 scripts/run-upgrade-sql.sh 使用
+-- ----------------------------
+DROP TABLE IF EXISTS `schema_upgrades`;
+CREATE TABLE `schema_upgrades` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `filename` varchar(255) NOT NULL COMMENT '已执行的 SQL 文件名',
+  `applied_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '执行时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `filename` (`filename`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='升级 SQL 执行记录';
+
 SET FOREIGN_KEY_CHECKS = 1;
