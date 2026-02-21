@@ -1,6 +1,6 @@
 services:
   web:
-    image: asdwsxzc123/dujiaoka:latest
+    image: asdwsxzc123/dujiaoka
     container_name: dujiaoka
     ports:
       - "8080:80"
