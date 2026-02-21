@@ -1,0 +1,7 @@
+-- 示例升级 SQL
+-- 文件命名规则: 001_描述.sql, 002_描述.sql ...
+-- 按文件名排序执行，已执行的不会重复执行（通过 schema_upgrades 表跟踪）
+--
+-- 示例:
+-- ALTER TABLE orders ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '折扣金额';
+-- INSERT INTO admin_menu (parent_id, title, uri) VALUES (0, '新功能', '/new-feature');
