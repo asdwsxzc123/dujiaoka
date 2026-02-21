@@ -61,7 +61,7 @@ echo "========================================="
 echo ""
 
 # ========== 1. 环境检查 ==========
-log_info "【1/6】环境检查"
+log_info "【1/7】环境检查"
 
 if [ ! -f "docker-compose.yml" ]; then
     log_error "请在项目根目录执行此脚本"
@@ -84,21 +84,55 @@ fi
 log_ok "数据库: ${DB_DATABASE}"
 echo ""
 
-# ========== 2. 数据库备份 ==========
-log_info "【2/6】数据库备份"
+# ========== 2. 备份（数据库 + .env + 镜像信息） ==========
+log_info "【2/7】创建备份"
 
 mkdir -p "$BACKUP_DIR"
 BACKUP_FILE="${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql"
+ENV_BACKUP="${BACKUP_DIR}/env_backup_${TIMESTAMP}"
+ROLLBACK_INFO="${BACKUP_DIR}/rollback_latest.sh"
 
+# 备份数据库
 docker exec "$MYSQL_CONTAINER" \
     mysqldump -u"${DB_USERNAME}" -p"${DB_PASSWORD}" "$DB_DATABASE" > "$BACKUP_FILE" 2>/dev/null
 
 BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
-log_ok "备份完成: ${BACKUP_FILE} (${BACKUP_SIZE})"
+log_ok "数据库备份: ${BACKUP_FILE} (${BACKUP_SIZE})"
+
+# 备份 .env
+if [ -f "$APP_ENV" ]; then
+    cp "$APP_ENV" "$ENV_BACKUP"
+    log_ok ".env 备份: ${ENV_BACKUP}"
+fi
+
+# 记录当前镜像 ID 并打 rollback tag（用于回滚时恢复旧镜像）
+OLD_IMAGE_ID=$(docker inspect --format='{{.Image}}' "$WEB_CONTAINER" 2>/dev/null || echo "")
+if [ -n "$OLD_IMAGE_ID" ]; then
+    # 给当前镜像打 rollback 标签，pull 新镜像后旧镜像仍可通过此 tag 访问
+    docker tag "$OLD_IMAGE_ID" asdwsxzc123/dujiaoka:rollback 2>/dev/null || true
+    log_ok "旧镜像已标记: asdwsxzc123/dujiaoka:rollback"
+fi
+OLD_COMMIT=""
+if [ -d ".git" ]; then
+    OLD_COMMIT=$(git rev-parse HEAD)
+fi
+
+# 写入回滚信息文件（供 rollback.sh 使用）
+cat > "$ROLLBACK_INFO" <<EOF
+# 回滚信息 - 由 upgrade.sh 自动生成
+# 时间: $(date '+%Y-%m-%d %H:%M:%S')
+ROLLBACK_DB_BACKUP="${BACKUP_FILE}"
+ROLLBACK_ENV_BACKUP="${ENV_BACKUP}"
+ROLLBACK_OLD_IMAGE_ID="${OLD_IMAGE_ID}"
+ROLLBACK_OLD_COMMIT="${OLD_COMMIT}"
+ROLLBACK_TIMESTAMP="${TIMESTAMP}"
+EOF
+
+log_ok "回滚信息已保存: ${ROLLBACK_INFO}"
 echo ""
 
 # ========== 3. 拉取最新代码和镜像 ==========
-log_info "【3/6】拉取更新"
+log_info "【3/7】拉取更新"
 
 # 拉取最新代码（获取新的升级 SQL 和脚本）
 if [ -d ".git" ]; then
@@ -115,8 +149,42 @@ docker compose ${ENV_DOCKER_FLAG} pull web
 log_ok "镜像已更新"
 echo ""
 
-# ========== 4. 重建 Web 容器 ==========
-log_info "【4/6】重建 Web 容器"
+# ========== 4. 同步 .env 配置 ==========
+log_info "【4/7】同步 .env 配置"
+
+# 对比 .env.example 和已部署的 .env，补全缺失的配置项
+if [ -f ".env.example" ] && [ -f "$APP_ENV" ]; then
+    ADDED=0
+
+    # 遍历 .env.example 中的所有 KEY（忽略注释和空行）
+    while IFS= read -r line; do
+        # 跳过注释和空行
+        [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+        # 提取 KEY 名
+        key=$(echo "$line" | cut -d '=' -f1)
+        [ -z "$key" ] && continue
+
+        # 检查已部署的 .env 中是否存在该 KEY
+        if ! grep -q "^${key}=" "$APP_ENV"; then
+            # 追加缺失的配置项（保留 .env.example 中的默认值）
+            echo "$line" >> "$APP_ENV"
+            log_warn "新增配置: ${key}"
+            ADDED=$((ADDED + 1))
+        fi
+    done < .env.example
+
+    if [ "$ADDED" -gt 0 ]; then
+        log_warn "共新增 ${ADDED} 个配置项，请检查 ${APP_ENV} 并修改为实际值"
+    else
+        log_ok ".env 配置已是最新"
+    fi
+else
+    log_warn "跳过 .env 同步（缺少 .env.example 或 ${APP_ENV}）"
+fi
+echo ""
+
+# ========== 5. 重建 Web 容器 ==========
+log_info "【5/7】重建 Web 容器"
 
 docker compose ${ENV_DOCKER_FLAG} up -d web
 sleep 5
@@ -129,8 +197,8 @@ fi
 log_ok "Web 容器已重建"
 echo ""
 
-# ========== 5. 执行升级 SQL ==========
-log_info "【5/6】执行升级 SQL"
+# ========== 6. 执行升级 SQL ==========
+log_info "【6/7】执行升级 SQL"
 
 # 确保跟踪表存在
 docker exec "$MYSQL_CONTAINER" mysql -uroot -p"${DB_ROOT_PASSWORD}" "$DB_DATABASE" -e "
@@ -192,7 +260,7 @@ fi
 echo ""
 
 # ========== 6. 清理缓存 & 验证 ==========
-log_info "【6/6】清理缓存 & 验证"
+log_info "【7/7】清理缓存 & 验证"
 
 # 清除缓存
 docker exec "$WEB_CONTAINER" php artisan config:clear 2>/dev/null || true
@@ -225,7 +293,5 @@ echo ""
 log_info "备份文件: ${BACKUP_FILE}"
 log_info "日志文件: ${LOG_FILE}"
 echo ""
-log_info "手动回滚命令（如需要）:"
-log_info "  docker cp ${BACKUP_FILE} ${MYSQL_CONTAINER}:/tmp/rollback.sql"
-log_info "  docker exec ${MYSQL_CONTAINER} sh -c 'mysql -u${DB_USERNAME} -p*** ${DB_DATABASE} < /tmp/rollback.sql'"
+log_info "如需回滚，执行: bash rollback.sh"
 echo "========================================="
