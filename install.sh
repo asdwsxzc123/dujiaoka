@@ -2,8 +2,11 @@
 
 #######################################
 # 独角数卡 Docker 一键安装脚本
-# 用法: bash install.sh
-# 前提: 已安装 Docker 和 Docker Compose
+# 用法:
+#   curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/install.sh | bash
+#   curl -fsSL .../install.sh | bash -s -- /自定义目录
+#   或本地执行: bash install.sh
+# 前提: 已安装 Docker 和 Git
 #######################################
 
 set -e
@@ -19,7 +22,10 @@ log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # ========== 配置默认值 ==========
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_URL="https://github.com/asdwsxzc123/dujiaoka.git"
+REPO_BRANCH="master"
+# 支持通过参数指定安装目录，默认 /opt/dujiaoka
+PROJECT_DIR="${1:-/opt/dujiaoka}"
 DATA_DIR="${PROJECT_DIR}/data"
 DOMAIN="pay.xxx.cn"
 DB_NAME="dujiaoka"
@@ -37,19 +43,26 @@ echo "========================================"
 echo ""
 
 # ========== 1. 环境检查 ==========
-cd "$PROJECT_DIR"
-
-if [ ! -f "docker-compose.yml" ]; then
-    log_error "未找到 docker-compose.yml，请在项目根目录运行"
+if ! command -v docker &> /dev/null; then
+    log_error "Docker 未安装，请先安装: https://docs.docker.com/engine/install/"
     exit 1
 fi
 
-if ! command -v docker &> /dev/null; then
-    log_error "Docker 未安装，请先安装 Docker"
+if ! command -v git &> /dev/null; then
+    log_error "Git 未安装，请先安装 Git"
     exit 1
 fi
 
 log_info "Docker: $(docker --version)"
+
+# 如果项目目录不存在或缺少 docker-compose.yml，自动克隆
+if [ ! -f "${PROJECT_DIR}/docker-compose.yml" ]; then
+    log_info "克隆项目到 ${PROJECT_DIR}..."
+    git clone -b "$REPO_BRANCH" "$REPO_URL" "$PROJECT_DIR"
+    log_info "项目已克隆"
+fi
+
+cd "$PROJECT_DIR"
 
 # ========== 2. 交互式配置 ==========
 echo ""

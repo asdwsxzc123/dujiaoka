@@ -33,7 +33,13 @@ systemctl start docker && systemctl enable docker
 ## 安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/update.sh | bash
+curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/install.sh | bash
+```
+
+自定义安装目录（默认 `/opt/dujiaoka`）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/install.sh | bash -s -- /home/www/dujiaoka
 ```
 
 安装过程会交互式询问：
