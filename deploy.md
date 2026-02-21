@@ -10,10 +10,10 @@ curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/update.
 
 脚本自动判断：项目不存在 → 安装，项目已存在 → 升级。
 
-自定义安装目录（默认 `/opt/dujiaoka`）：
+自定义安装目录（默认 `~/dujiaoka`）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/update.sh | bash -s -- /home/www/dujiaoka
+curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/update.sh | bash -s -- ~/dujiaoka
 ```
 
 ## 前提条件
@@ -36,7 +36,7 @@ systemctl start docker && systemctl enable docker
 curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/install.sh | bash
 ```
 
-自定义安装目录（默认 `/opt/dujiaoka`）：
+自定义安装目录（默认 `~/dujiaoka`）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/install.sh | bash -s -- /home/www/dujiaoka
@@ -59,8 +59,8 @@ curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/update.
 ```
 
 升级流程：
-1. 备份数据库 + .env + 旧镜像
-2. 拉取最新代码和 Docker 镜像
+1. 拉取最新代码，有变更时拉取新镜像（update.sh 负责）
+2. 备份数据库 + .env + 旧镜像
 3. 同步 .env 新增配置项
 4. 重建 Web 容器
 5. 执行升级 SQL（自动跳过已执行的）
@@ -71,7 +71,7 @@ curl -fsSL https://raw.githubusercontent.com/asdwsxzc123/dujiaoka/master/update.
 升级出问题时：
 
 ```bash
-cd /opt/dujiaoka
+cd ~/dujiaoka
 bash rollback.sh
 ```
 
@@ -80,7 +80,7 @@ bash rollback.sh
 ## 日常运维
 
 ```bash
-cd /opt/dujiaoka
+cd ~/dujiaoka
 
 # 启动
 docker compose --env-file .env.docker up -d

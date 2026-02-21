@@ -27,7 +27,7 @@ log_error() { echo -e "${RED}[FAIL]${NC} $1"; }
 REPO_URL="https://github.com/asdwsxzc123/dujiaoka.git"
 REPO_BRANCH="master"
 # 默认安装目录，可通过参数覆盖
-PROJECT_DIR="${1:-/opt/dujiaoka}"
+PROJECT_DIR="${1:-$HOME/dujiaoka}"
 
 echo "========================================="
 echo "  独角���卡 - 远程一键部署/升级"
@@ -61,11 +61,28 @@ if [ -d "$PROJECT_DIR" ] && [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
 
     cd "$PROJECT_DIR"
 
+    # 记录当前版本，用于判断是否需要拉取新镜像
+    OLD_COMMIT=$(git rev-parse --short HEAD)
+
     # 拉取最新代码（包含最新的 upgrade.sh 和升级 SQL）
     log_info "拉取最新代码..."
     git fetch origin "$REPO_BRANCH"
     git reset --hard "origin/$REPO_BRANCH"
-    log_ok "代码已更新"
+    NEW_COMMIT=$(git rev-parse --short HEAD)
+    log_ok "代码已更新: ${OLD_COMMIT} → ${NEW_COMMIT}"
+
+    # 仅当代码有变更时才拉取最新 Docker 镜像
+    if [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
+        log_info "拉取最新镜像..."
+        ENV_DOCKER_FLAG=""
+        if [ -f ".env.docker" ]; then
+            ENV_DOCKER_FLAG="--env-file .env.docker"
+        fi
+        docker compose ${ENV_DOCKER_FLAG} pull web
+        log_ok "镜像已更新"
+    else
+        log_info "代码无变更，跳过镜像拉取"
+    fi
 
     # 执行升级脚本
     echo ""

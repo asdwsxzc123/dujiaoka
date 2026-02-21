@@ -4,7 +4,7 @@
 /public/uploads
 /storage/*.key
 /vendor
-
+backups
 .env.*
 .env.backup
 pnpm-lock.yaml

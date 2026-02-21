@@ -3,7 +3,8 @@
 #######################################
 # 独角数卡 Docker 升级脚本
 # 用法: bash upgrade.sh
-# 流程: 备份 → git pull → 拉取镜像 → 重建容器 → 执行升级SQL → 清缓存 → 验证
+# 流程: 备份 → 同步配置 → 重建容器 → 执行升级SQL → 清缓存 → 验证
+# 注意: 代码拉取和镜像拉取由 update.sh 负责，本脚本只做本地升级操作
 # 升级SQL: database/sql/upgrades/ 目录，按文件名排序执行
 # 跟踪表: schema_upgrades 记录已执行的SQL，防止重复执行
 #######################################
@@ -19,7 +20,7 @@ NC='\033[0m'
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="./backups"
-LOG_FILE="upgrade_${TIMESTAMP}.log"
+LOG_FILE="${BACKUP_DIR}/upgrade_${TIMESTAMP}.log"
 
 log()       { echo -e "$1" | tee -a "$LOG_FILE"; }
 log_info()  { log "${BLUE}[INFO]${NC} $1"; }
@@ -61,7 +62,7 @@ echo "========================================="
 echo ""
 
 # ========== 1. 环境检查 ==========
-log_info "【1/7】环境检查"
+log_info "【1/6】环境检查"
 
 if [ ! -f "docker-compose.yml" ]; then
     log_error "请在项目根目录执行此脚本"
@@ -85,7 +86,7 @@ log_ok "数据库: ${DB_DATABASE}"
 echo ""
 
 # ========== 2. 备份（数据库 + .env + 镜像信息） ==========
-log_info "【2/7】创建备份"
+log_info "【2/6】创建备份"
 
 mkdir -p "$BACKUP_DIR"
 BACKUP_FILE="${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql"
@@ -131,26 +132,8 @@ EOF
 log_ok "回滚信息已保存: ${ROLLBACK_INFO}"
 echo ""
 
-# ========== 3. 拉取最新代码和镜像 ==========
-log_info "【3/7】拉取更新"
-
-# 拉取最新代码（获取新的升级 SQL 和脚本）
-if [ -d ".git" ]; then
-    CURRENT_COMMIT=$(git rev-parse --short HEAD)
-    log_info "当前版本: ${CURRENT_COMMIT}"
-    git pull --rebase 2>&1 | tee -a "$LOG_FILE"
-    NEW_COMMIT=$(git rev-parse --short HEAD)
-    log_ok "代码更新: ${CURRENT_COMMIT} → ${NEW_COMMIT}"
-fi
-
-# 拉取最新 Docker 镜像
-log_info "拉取最新镜像..."
-docker compose ${ENV_DOCKER_FLAG} pull web
-log_ok "镜像已更新"
-echo ""
-
-# ========== 4. 同步 .env 配置 ==========
-log_info "【4/7】同步 .env 配置"
+# ========== 3. 同步 .env 配置 ==========
+log_info "【3/6】同步 .env 配置"
 
 # 对比 .env.example 和已部署的 .env，补全缺失的配置项
 if [ -f ".env.example" ] && [ -f "$APP_ENV" ]; then
@@ -183,8 +166,8 @@ else
 fi
 echo ""
 
-# ========== 5. 重建 Web 容器 ==========
-log_info "【5/7】重建 Web 容器"
+# ========== 4. 重建 Web 容器 ==========
+log_info "【4/6】重建 Web 容器"
 
 docker compose ${ENV_DOCKER_FLAG} up -d web
 sleep 5
@@ -197,8 +180,8 @@ fi
 log_ok "Web 容器已重建"
 echo ""
 
-# ========== 6. 执行升级 SQL ==========
-log_info "【6/7】执行升级 SQL"
+# ========== 5. 执行升级 SQL ==========
+log_info "【5/6】执行升级 SQL"
 
 # 确保跟踪表存在
 docker exec "$MYSQL_CONTAINER" mysql -uroot -p"${DB_ROOT_PASSWORD}" "$DB_DATABASE" -e "
@@ -260,7 +243,7 @@ fi
 echo ""
 
 # ========== 6. 清理缓存 & 验证 ==========
-log_info "【7/7】清理缓存 & 验证"
+log_info "【6/6】清理缓存 & 验证"
 
 # 清除缓存
 docker exec "$WEB_CONTAINER" php artisan config:clear 2>/dev/null || true

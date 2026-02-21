@@ -24,8 +24,8 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ========== 配置默认值 ==========
 REPO_URL="https://github.com/asdwsxzc123/dujiaoka.git"
 REPO_BRANCH="master"
-# 支持通过参数指定安装目录，默认 /opt/dujiaoka
-PROJECT_DIR="${1:-/opt/dujiaoka}"
+# 支持通过参数指定安装目录，默认 ~/dujiaoka
+PROJECT_DIR="${1:-$HOME/dujiaoka}"
 DATA_DIR="${PROJECT_DIR}/data"
 DOMAIN="pay.xxx.cn"
 DB_NAME="dujiaoka"
