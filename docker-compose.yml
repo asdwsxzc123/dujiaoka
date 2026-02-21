@@ -7,15 +7,15 @@ services:
       - "9000:9000"
     volumes:
       # 环境配置文件
-      - ${DATA_DIR}/dujiaoka/.env:/app/.env
+      - ./dujiaoka/.env:/app/.env
       # 安装锁定文件
-      - ${DATA_DIR}/dujiaoka/install.lock:/app/install.lock
+      - ./dujiaoka/install.lock:/app/install.lock
       # 上传文件目录
       # 注意：首次部署前需要手动创建目录并设置权限：
-      # mkdir -p ${DATA_DIR}/dujiaoka/public/uploads/images
-      # mkdir -p ${DATA_DIR}/dujiaoka/public/uploads/files
-      # chmod -R 777 ${DATA_DIR}/dujiaoka/public/uploads
-      - ${DATA_DIR}/dujiaoka/public/uploads:/app/public/uploads
+      # mkdir -p ./dujiaoka/public/uploads/images
+      # mkdir -p ./dujiaoka/public/uploads/files
+      # chmod -R 777 ./dujiaoka/public/uploads
+      - ./dujiaoka/public/uploads:/app/public/uploads
     environment:
       WEB_DOCUMENT_ROOT: "/app/public"
       TZ: Asia/Shanghai
@@ -32,7 +32,7 @@ services:
     ports:
       - "3307:3306"
     volumes:
-      - ${DATA_DIR}/dujiaoka/mysql:/var/lib/mysql
+      - ./dujiaoka/mysql:/var/lib/mysql
       # 首次启动时自动导入数据库结构
       - ./database/sql/install.sql:/docker-entrypoint-initdb.d/install.sql:ro
     environment:
@@ -51,5 +51,5 @@ services:
     ports:
       - "6380:6379"
     volumes:
-      - ${DATA_DIR}/dujiaoka/redis:/data
+      - ./dujiaoka/redis:/data
     restart: always

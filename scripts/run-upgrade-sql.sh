@@ -27,10 +27,8 @@ cd "$PROJECT_DIR"
 
 # 容器名（与 docker-compose.yml 一致）
 MYSQL_CONTAINER="dujiaoka-mysql"
+DB_ROOT_PASSWORD="dujiaoka123456"
 UPGRADES_DIR="database/sql/upgrades"
-# MySQL root 密码（运行时输入，不存入代码仓库）
-read -sp "请输入 MySQL root 密码: " DB_ROOT_PASSWORD
-echo ""
 
 # 读取数据库名
 DATA_DIR=""
