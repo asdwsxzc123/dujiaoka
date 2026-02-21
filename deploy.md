@@ -138,3 +138,4 @@ docker exec dujiaoka php artisan config:clear
 | `install.sh` | 本地首次安装 |
 | `upgrade.sh` | 本地升级 |
 | `rollback.sh` | 回滚到上一次升级前 |
+| `scripts/run-upgrade-sql.sh` | 单独执行升级 SQL（升级中断后补执行） |

@@ -46,6 +46,8 @@ class OrderController extends AdminController
             $grid->column('coupon_discount_price');
             // 推广码列，可复制便于定位
             $grid->column('affiliateCode.code', admin_trans('order.fields.affiliate_code_id'))->copyable();
+            // 推广码备注
+            $grid->column('affiliateCode.remark', admin_trans('order.fields.affiliate_code_remark'));
             $grid->column('wholesale_discount_price');
             $grid->column('actual_price');
             $grid->column('pay.pay_name', admin_trans('order.fields.pay_id'));
@@ -114,6 +116,7 @@ class OrderController extends AdminController
             $show->field('coupon.coupon', admin_trans('order.fields.coupon_id'));
             $show->field('coupon_discount_price');
             $show->field('affiliateCode.code', admin_trans('order.fields.affiliate_code_id'));
+            $show->field('affiliateCode.remark', admin_trans('order.fields.affiliate_code_remark'));
             $show->field('wholesale_discount_price');
             $show->field('total_price');
             $show->field('actual_price');
@@ -149,6 +152,7 @@ class OrderController extends AdminController
             $form->display('coupon.coupon', admin_trans('order.fields.coupon_id'));
             $form->display('coupon_discount_price');
             $form->display('affiliateCode.code', admin_trans('order.fields.affiliate_code_id'));
+            $form->display('affiliateCode.remark', admin_trans('order.fields.affiliate_code_remark'));
             $form->display('wholesale_discount_price');
             $form->display('total_price');
             $form->display('actual_price');

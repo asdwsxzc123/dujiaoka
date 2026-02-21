@@ -31,7 +31,7 @@ DOMAIN="pay.xxx.cn"
 DB_NAME="dujiaoka"
 DB_USER="dujiaoka"
 DB_PASSWORD="dujiaoka123456"
-DB_ROOT_PASSWORD="root123456"
+DB_ROOT_PASSWORD=""
 
 # 容器名（与 docker-compose.yml 一致）
 WEB_CONTAINER="dujiaoka"
@@ -71,6 +71,11 @@ read -p "域名 [${DOMAIN}]: " input && DOMAIN=${input:-$DOMAIN}
 read -p "数据库名 [${DB_NAME}]: " input && DB_NAME=${input:-$DB_NAME}
 read -p "数据库用户 [${DB_USER}]: " input && DB_USER=${input:-$DB_USER}
 read -p "数据库密码 [${DB_PASSWORD}]: " input && DB_PASSWORD=${input:-$DB_PASSWORD}
+read -sp "MySQL root 密码（必填）: " DB_ROOT_PASSWORD && echo ""
+if [ -z "$DB_ROOT_PASSWORD" ]; then
+    log_error "MySQL root 密码不能为空"
+    exit 1
+fi
 read -p "数据目录 [${DATA_DIR}]: " input && DATA_DIR=${input:-$DATA_DIR}
 
 echo ""

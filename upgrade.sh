@@ -20,6 +20,7 @@ NC='\033[0m'
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="./backups"
+mkdir -p "$BACKUP_DIR"
 LOG_FILE="${BACKUP_DIR}/upgrade_${TIMESTAMP}.log"
 
 log()       { echo -e "$1" | tee -a "$LOG_FILE"; }
@@ -52,8 +53,9 @@ if [ -f "$APP_ENV" ]; then
     DB_PASSWORD=$(grep "^DB_PASSWORD=" "$APP_ENV" | cut -d '=' -f2)
 fi
 
-# 也尝试从 docker-compose.yml 获取 root 密码（用于创建跟踪表）
-DB_ROOT_PASSWORD="root123456"
+# MySQL root 密码（运行时输入，不存入代码仓库）
+read -sp "请输入 MySQL root 密码: " DB_ROOT_PASSWORD
+echo ""
 
 echo "========================================="
 echo "  独角数卡 - 升级脚本"
@@ -88,7 +90,6 @@ echo ""
 # ========== 2. 备份（数据库 + .env + 镜像信息） ==========
 log_info "【2/6】创建备份"
 
-mkdir -p "$BACKUP_DIR"
 BACKUP_FILE="${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql"
 ENV_BACKUP="${BACKUP_DIR}/env_backup_${TIMESTAMP}"
 ROLLBACK_INFO="${BACKUP_DIR}/rollback_latest.sh"
@@ -183,63 +184,8 @@ echo ""
 # ========== 5. 执行升级 SQL ==========
 log_info "【5/6】执行升级 SQL"
 
-# 确保跟踪表存在
-docker exec "$MYSQL_CONTAINER" mysql -uroot -p"${DB_ROOT_PASSWORD}" "$DB_DATABASE" -e "
-CREATE TABLE IF NOT EXISTS schema_upgrades (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    filename VARCHAR(255) NOT NULL UNIQUE COMMENT '已执行的 SQL 文件名',
-    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '执行时间'
-) COMMENT='升级 SQL 执行记录';" 2>/dev/null
-
-# 检查 upgrades 目录是否有 SQL 文件
-if [ -d "$UPGRADES_DIR" ]; then
-    # 获取所有 .sql 文件，按文件名排序
-    SQL_FILES=$(ls -1 "${UPGRADES_DIR}"/*.sql 2>/dev/null | sort)
-
-    if [ -n "$SQL_FILES" ]; then
-        APPLIED=0
-        SKIPPED=0
-
-        for sql_file in $SQL_FILES; do
-            filename=$(basename "$sql_file")
-
-            # 检查是否已执行过（查询跟踪表）
-            ALREADY_APPLIED=$(docker exec "$MYSQL_CONTAINER" \
-                mysql -uroot -p"${DB_ROOT_PASSWORD}" "$DB_DATABASE" \
-                -sNe "SELECT COUNT(*) FROM schema_upgrades WHERE filename='${filename}';" 2>/dev/null)
-
-            if [ "$ALREADY_APPLIED" = "1" ]; then
-                log_info "跳过（已执行）: ${filename}"
-                SKIPPED=$((SKIPPED + 1))
-                continue
-            fi
-
-            # 执行 SQL 文件
-            log_info "执行: ${filename}"
-            if docker cp "$sql_file" "${MYSQL_CONTAINER}:/tmp/${filename}" && \
-               docker exec "$MYSQL_CONTAINER" \
-                   sh -c "mysql -uroot -p'${DB_ROOT_PASSWORD}' '${DB_DATABASE}' < /tmp/${filename}" 2>/dev/null; then
-
-                # 记录到跟踪表
-                docker exec "$MYSQL_CONTAINER" mysql -uroot -p"${DB_ROOT_PASSWORD}" "$DB_DATABASE" \
-                    -e "INSERT INTO schema_upgrades (filename) VALUES ('${filename}');" 2>/dev/null
-                log_ok "成功: ${filename}"
-                APPLIED=$((APPLIED + 1))
-            else
-                log_error "失败: ${filename}"
-                log_warn "请手动检查并修复后重新运行升级脚本"
-                log_warn "数据库备份: ${BACKUP_FILE}"
-                exit 1
-            fi
-        done
-
-        log_ok "升级 SQL 完成（执行: ${APPLIED}, 跳过: ${SKIPPED}）"
-    else
-        log_info "无升级 SQL 文件"
-    fi
-else
-    log_info "upgrades 目录不存在，跳过"
-fi
+# 调用独立脚本执行升级 SQL（可单独运行: bash scripts/run-upgrade-sql.sh）
+bash "${PROJECT_DIR}/scripts/run-upgrade-sql.sh"
 echo ""
 
 # ========== 6. 清理缓存 & 验证 ==========

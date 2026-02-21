@@ -401,6 +401,32 @@ BEGIN;
 COMMIT;
 
 -- ----------------------------
+-- Table structure for affiliate_codes
+-- ----------------------------
+DROP TABLE IF EXISTS `affiliate_codes`;
+CREATE TABLE `affiliate_codes` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `code` varchar(100) NOT NULL COMMENT '推广码',
+  `is_open` tinyint NOT NULL DEFAULT 1 COMMENT '是否启用 1启用 0禁用',
+  `discount_type` tinyint NOT NULL DEFAULT 1 COMMENT '折扣类型 1固定金额 2百分比',
+  `discount_value` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '折扣值',
+  `commission_rate` decimal(5,2) NOT NULL DEFAULT 0.00 COMMENT '佣金比例(%)',
+  `remark` varchar(255) DEFAULT NULL COMMENT '备注说明',
+  `use_count` int NOT NULL DEFAULT 0 COMMENT '使用次数统计',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='推广码表';
+
+-- ----------------------------
+-- Records of affiliate_codes
+-- ----------------------------
+BEGIN;
+COMMIT;
+
+-- ----------------------------
 -- Table structure for orders
 -- ----------------------------
 DROP TABLE IF EXISTS `orders`;
